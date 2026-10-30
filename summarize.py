@@ -11,15 +11,20 @@ ROOT = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, ROOT)
 from push import push  # noqa: E402
 
-DAILY_PROMPT = """你是 AI 行业分析师，为关注【图片/视频生成、开源生态、NSFW 创作生态】的用户写每日情报。
+DAILY_PROMPT = """你是 AI 行业分析师，为关注【图片/视频生成、开源生态】的用户写每日情报。
 输入是 JSON 条目列表。输出 Markdown 日报，结构：
 1. 【变革分析】挑 1-2 件真正改变格局的事，各写 3-4 句：它改变了谁的生存方式/让什么变便宜/让什么变过时。没有值得写的就写"今日无格局级事件"。
 2. 【新品新工具】过去一天第一次出现的产品/模型/工具，每条一行：名称+一句话它能干什么+链接。
 3. 【模型更新】开源/闭源分列，每条一行+链接。
-4. 【NSFW 专区】Civitai 与 HF 的 NSFW 新动静。
-5. 【变现信号】谁开始收费、付费榜动向、创作者激励。
-6. 【一句话速览】其余条目每条一句+链接。
+4. 【变现信号】谁开始收费、付费榜动向、创作者激励。
+5. 【一句话速览】其余条目每条一句+链接。
 要求：忠实于输入，不编造；某板块无内容写"今日无"；总长 600 字内；标题行用日期。"""
+
+# NSFW 条目不进 LLM（国产 API 网关有审核，喂进去会被拒/吞），由代码直接拼接原文
+NSFW_SOURCES = {"civitai"}
+
+def is_nsfw(item: dict) -> bool:
+    return item.get("source") in NSFW_SOURCES or bool(item.get("nsfw"))
 
 RADAR_PROMPT = """输入是 JSON 条目（刚发生的事件）。写一条手机快报：
 第一行：⚡ + 最重要的事件一句话概括。
@@ -72,10 +77,16 @@ def main():
     if not items:
         print(f"[summarize:{mode}] nothing new, silent")
         return
+    nsfw_items = [i for i in items if is_nsfw(i)]
+    safe_items = [i for i in items if not is_nsfw(i)]
     p = DAILY_PROMPT if mode == "daily" else RADAR_PROMPT
-    text = call_gemini(p, items) or call_openai_compat(p, items)
-    if not text:
-        text = fallback(items)
+    if safe_items:
+        text = call_gemini(p, safe_items) or call_openai_compat(p, safe_items) or fallback(safe_items)
+    else:
+        text = "（今日非 NSFW 区无新增）" if nsfw_items else fallback(items)
+    if nsfw_items:
+        sec = ["", "【NSFW 专区】"] + [f"- {i['title']}  \n  {i['url']}" for i in nsfw_items[:15]]
+        text += "\n" + "\n".join(sec)
     title = f"AI雷达 {'日报' if mode=='daily' else '快报'} {datetime.now(timezone.utc).strftime('%m-%d')}"
     push(title, text)
 
