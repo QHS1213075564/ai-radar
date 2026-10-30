@@ -116,6 +116,13 @@ def fetch_civitai(cfg):
                 out.append(item("civitai", m["id"], f"Civitai 热榜 {m.get('name','?')}",
                                 f"https://civitai.com/models/{m['id']}", tags=["civitai", "trending"],
                                 desc=m.get("description") or ""))
+    if cfg.get("workflows"):
+        r = get(base, {"limit": 15, "sort": "Newest", "period": "Day", "types": "Workflows"})
+        if r:
+            for m in r.json().get("items", []):
+                out.append(item("civitai", m["id"], f"Civitai 新工作流 {m.get('name','?')}",
+                                f"https://civitai.com/models/{m['id']}", tags=["civitai", "workflow"],
+                                desc=m.get("description") or ""))
     return out
 
 def fetch_changelogs(entries):

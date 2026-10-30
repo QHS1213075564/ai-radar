@@ -37,6 +37,7 @@ monitor:
     new_models: true           # 每日新发布（含 NSFW）
     trending: true             # 热度飙升
     nsfw_new: true             # NSFW 标签新模型
+    workflows: true            # Workflows 类型（ComfyUI 工作流专区）
   changelogs:                  # 闭源厂商官方发布页（优先有 RSS 的）
     - name: OpenAI News
       url: https://openai.com/news/rss.xml
