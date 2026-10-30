@@ -24,6 +24,7 @@ jobs:
           BARK_KEY: "${{ secrets.BARK_KEY }}"
           SERVERCHAN_KEY: "${{ secrets.SERVERCHAN_KEY }}"
           PUSHPLUS_TOKEN: "${{ secrets.PUSHPLUS_TOKEN }}"
+          GGSUPER_TOKEN: "${{ secrets.GGSUPER_TOKEN }}"
       - name: persist state
         run: |
           git config user.email "radar@bot" && git config user.name "ai-radar"
