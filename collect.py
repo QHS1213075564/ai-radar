@@ -60,8 +60,13 @@ def fetch_hf_orgs(orgs):
         r = get(f"https://huggingface.co/api/models", {"author": org, "sort": "createdAt", "limit": 3})
         if r is None: continue
         for m in r.json()[:3]:
+            tagline = " | ".join(filter(None, [
+                f"pipeline: {m['pipeline_tag']}" if m.get("pipeline_tag") else "",
+                ",".join([t for t in (m.get("tags") or []) if ":" not in t][:4]),
+            ]))
             out.append(item("hf_org", m["modelId"], f"[{org}] {m['modelId']}",
-                            f"https://huggingface.co/{m['modelId']}", tags=["monitor", "hf", "official"]))
+                            f"https://huggingface.co/{m['modelId']}", tags=["monitor", "hf", "official"],
+                            desc=tagline))
         time.sleep(0.3)
     return out
 

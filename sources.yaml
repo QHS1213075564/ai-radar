@@ -20,6 +20,8 @@ monitor:
     - black-forest-labs
     - Wan-AI
     - tencent
+    - OpenMOSS-Team          # 复旦系 MOSS 图像模型（用户重点关注）
+    - ideogram-ai            # Ideogram 官方 org（HF 有量化版上新）
   github_repos:                # 官方旗舰仓库新 release（必须是 owner/repo 全路径）
     - QwenLM/Qwen
     - deepseek-ai/deepseek
@@ -79,6 +81,8 @@ daily:
   cron_utc: "0 4 * * *"          # 北京时间 12:00
   sections:
     - 变革分析        # 每天挑 1-2 件真正改变格局的事
+    - MiniMax H3动态  # H3 家族新变体（用户重点盯）
+    - 图片模型动态    # 图片生成模型：能力/模式/应用（开源+闭源）
     - 新品新工具      # 过去 N 天第一次出现的
     - 模型更新-开源
     - 模型更新-闭源
