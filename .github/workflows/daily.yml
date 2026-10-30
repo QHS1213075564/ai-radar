@@ -24,7 +24,9 @@ jobs:
       - name: persist state
         run: |
           git config user.email "radar@bot" && git config user.name "ai-radar"
+          git remote set-url origin "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
           git add state/ && git diff --cached --quiet || git commit -m "daily state $(date -u +%FT%TZ)"
-          git push
+          git push origin HEAD
+        env: {GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"}
 
 # touched to force workflow registration
