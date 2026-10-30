@@ -1,0 +1,28 @@
+name: daily
+on:
+  schedule:
+    - cron: "0 4 * * *"   # UTC 04:00 = 北京 12:00
+  workflow_dispatch:
+jobs:
+  daily:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: "3.12"}
+      - run: pip install -q requests pyyaml
+      - name: collect
+        run: python collect.py --mode daily
+        env: {GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"}
+      - name: summarize+push
+        run: python summarize.py daily
+        env:
+          GEMINI_API_KEY: "${{ secrets.GEMINI_API_KEY }}"
+          BARK_KEY: "${{ secrets.BARK_KEY }}"
+          SERVERCHAN_KEY: "${{ secrets.SERVERCHAN_KEY }}"
+          PUSHPLUS_TOKEN: "${{ secrets.PUSHPLUS_TOKEN }}"
+      - name: persist state
+        run: |
+          git config user.email "radar@bot" && git config user.name "ai-radar"
+          git add state/ && git diff --cached --quiet || git commit -m "daily state $(date -u +%FT%TZ)"
+          git push

@@ -1,0 +1,87 @@
+# AI Radar 采集源配置
+# monitor = 监视型（盯已知源，上新即报）
+# discover = 发现型（扫增量，新东西自动浮出）
+
+monitor:
+  huggingface_orgs:            # 官方 org 新模型上架 = 全网第一手
+    - Qwen
+    - deepseek-ai
+    - zai-org
+    - moonshotai
+    - MiniMaxAI
+    - ByteDanceSeed
+    - facebook
+    - meta-llama
+    - google-deepmind
+    - mistralai
+    - openai
+    - microsoft
+    - Stability-AI
+    - black-forest-labs
+    - Wan-AI
+    - tencent
+  github_repos:                # 官方旗舰仓库新 release（必须是 owner/repo 全路径）
+    - QwenLM/Qwen
+    - deepseek-ai/deepseek
+    - Zai-org/GLM-4
+    - MoonshotAI/Kimi-K2
+    - MiniMax-Text-Model/MiniMax-Text
+    - comfyanonymous/ComfyUI
+    - AIGODLIKE/ComfyUI-Zluda
+    - lllyasviel/ControlNet
+    - Stability-AI/generative-models
+    - Wan-Video/Wan2.2
+  civitai:
+    new_models: true           # 每日新发布（含 NSFW）
+    trending: true             # 热度飙升
+    nsfw_new: true             # NSFW 标签新模型
+  changelogs:                  # 闭源厂商官方发布页（优先有 RSS 的）
+    - name: OpenAI News
+      url: https://openai.com/news/rss.xml
+    - name: Anthropic News
+      url: https://www.anthropic.com/news
+    - name: Google DeepMind
+      url: https://deepmind.google/blog/rss.xml
+    - name: ByteDance Seed
+      url: https://seed.bytedance.com/blog
+    # Midjourney 文档站反爬（403），由搜索/社区渠道兜底，暂不直连
+
+discover:
+  github_trending: daily       # 日榜
+  hf_daily_papers: true
+  producthunt_ai: true         # 新产品集散地
+  hackernews:
+    min_points: 100
+    keywords: [ai, llm, diffusion, video, image, model, agent, stable diffusion, comfyui]
+  subreddits:                  # 热帖（NSFW 应用圈在这里发酵）
+    - LocalLLaMA
+    - StableDiffusion
+    - SillyTavernAI
+    - CharacterAI
+    - ComfyUI
+    - LocalLLaMA
+  rss:                         # 中文圈兜底
+    - https://www.jiqizhixin.com/rss
+    - https://www.qbitai.com/feed
+
+# 事件雷达（命中即推，不等日报）
+radar:
+  interval_hours: 4
+  notify_on:
+    - official_org_new_model     # 监视名单内任何上新
+    - official_org_new_repo
+    - watchlist_hit
+  # 兜底关键词：平时不用，但留着（留空也能跑）
+  watchlist: []
+
+# 日报
+daily:
+  cron_utc: "0 4 * * *"          # 北京时间 12:00
+  sections:
+    - 变革分析        # 每天挑 1-2 件真正改变格局的事
+    - 新品新工具      # 过去 N 天第一次出现的
+    - 模型更新-开源
+    - 模型更新-闭源
+    - NSFW专区        # Civitai + HF NSFW 标签
+    - 变现信号        # 谁开始收费/付费榜/创作者激励
+    - 一句话速览
