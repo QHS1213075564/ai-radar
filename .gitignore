@@ -1,2 +1,3 @@
 collect.log
 state/new_*.json
+__pycache__/

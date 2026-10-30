@@ -18,6 +18,9 @@ jobs:
         run: python summarize.py daily
         env:
           GEMINI_API_KEY: "${{ secrets.GEMINI_API_KEY }}"
+          LLM_API_KEY: "${{ secrets.LLM_API_KEY }}"
+          LLM_BASE_URL: "${{ secrets.LLM_BASE_URL }}"
+          LLM_MODEL: "${{ secrets.LLM_MODEL }}"
           BARK_KEY: "${{ secrets.BARK_KEY }}"
           SERVERCHAN_KEY: "${{ secrets.SERVERCHAN_KEY }}"
           PUSHPLUS_TOKEN: "${{ secrets.PUSHPLUS_TOKEN }}"

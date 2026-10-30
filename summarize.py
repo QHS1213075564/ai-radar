@@ -25,6 +25,24 @@ RADAR_PROMPT = """输入是 JSON 条目（刚发生的事件）。写一条手�
 第一行：⚡ + 最重要的事件一句话概括。
 随后每条一行：名称+一句话+链接。总计 200 字内。忠实输入，不编造。"""
 
+def call_openai_compat(prompt: str, items: list) -> str:
+    """OpenAI 兼容接口：SiliconFlow / Moonshot / DeepSeek 等。
+    env: LLM_API_KEY（必填）、LLM_BASE_URL（默认 api.deepseek.com）、LLM_MODEL（默认 deepseek-chat）"""
+    key = os.environ.get("LLM_API_KEY")
+    if not key:
+        return ""
+    base = os.environ.get("LLM_BASE_URL", "https://api.deepseek.com").rstrip("/")
+    model = os.environ.get("LLM_MODEL", "deepseek-chat")
+    body = {"model": model, "messages": [{"role": "user", "content": prompt + "\n\n" + json.dumps(items, ensure_ascii=False)[:60000]}]}
+    try:
+        r = requests.post(f"{base}/chat/completions", json=body, timeout=90,
+                          headers={"Authorization": f"Bearer {key}"})
+        r.raise_for_status()
+        return r.json()["choices"][0]["message"]["content"]
+    except Exception as e:
+        print(f"[llm-compat-fail] {e}", file=sys.stderr)
+        return ""
+
 def call_gemini(prompt: str, items: list) -> str:
     key = os.environ.get("GEMINI_API_KEY")
     if not key:
@@ -54,7 +72,8 @@ def main():
     if not items:
         print(f"[summarize:{mode}] nothing new, silent")
         return
-    text = call_gemini(DAILY_PROMPT if mode == "daily" else RADAR_PROMPT, items)
+    p = DAILY_PROMPT if mode == "daily" else RADAR_PROMPT
+    text = call_gemini(p, items) or call_openai_compat(p, items)
     if not text:
         text = fallback(items)
     title = f"AI雷达 {'日报' if mode=='daily' else '快报'} {datetime.now(timezone.utc).strftime('%m-%d')}"
