@@ -38,9 +38,19 @@ def get(url, params=None, headers=None, timeout=25, retries=2):
             time.sleep(1.5 * (attempt + 1))
     return None
 
-def item(source, iid, title, url, tags=None, ts=None):
+def clean_desc(text, limit=140):
+    """HTML/Markdown 简介清洗为纯文本一行。"""
+    if not text:
+        return ""
+    t = re.sub(r"<[^>]+>", " ", text)
+    t = re.sub(r"&[a-z#0-9]+;", " ", t, flags=re.I)
+    t = re.sub(r"\s+", " ", t).strip()
+    return t[:limit]
+
+def item(source, iid, title, url, tags=None, ts=None, desc=""):
     return {"id": f"{source}:{iid}", "source": source, "title": title.strip(),
-            "url": url, "tags": tags or [], "ts": ts or datetime.now(timezone.utc).isoformat()}
+            "url": url, "tags": tags or [], "ts": ts or datetime.now(timezone.utc).isoformat(),
+            "desc": clean_desc(desc)}
 
 # ---------------- monitor 采集器 ----------------
 
@@ -85,19 +95,22 @@ def fetch_civitai(cfg):
         if r:
             for m in r.json().get("items", []):
                 out.append(item("civitai", m["id"], f"Civitai 新模型 {m.get('name','?')}",
-                                f"https://civitai.com/models/{m['id']}", tags=["civitai"]))
+                                f"https://civitai.com/models/{m['id']}", tags=["civitai"],
+                                desc=m.get("description") or ""))
     if cfg.get("nsfw_new"):
         r = get(base, {"limit": 15, "sort": "Newest", "period": "Day", "nsfw": "true"})
         if r:
             for m in r.json().get("items", []):
                 out.append(item("civitai", m["id"], f"Civitai NSFW 新发布 {m.get('name','?')}",
-                                f"https://civitai.com/models/{m['id']}", tags=["civitai", "nsfw"]))
+                                f"https://civitai.com/models/{m['id']}", tags=["civitai", "nsfw"],
+                                desc=m.get("description") or ""))
     if cfg.get("trending"):
         r = get(base, {"limit": 10, "sort": "Hot", "period": "Day"})
         if r:
             for m in r.json().get("items", []):
                 out.append(item("civitai", m["id"], f"Civitai 热榜 {m.get('name','?')}",
-                                f"https://civitai.com/models/{m['id']}", tags=["civitai", "trending"]))
+                                f"https://civitai.com/models/{m['id']}", tags=["civitai", "trending"],
+                                desc=m.get("description") or ""))
     return out
 
 def fetch_changelogs(entries):
@@ -147,8 +160,9 @@ def fetch_producthunt():
             for l in entry.findall("link") + entry.findall(A + "link"):
                 link = l.get("href", "")
             if not t: continue
+            d = entry.findtext(A + "content") or entry.findtext("description") or ""
             out.append(item("producthunt", hashlib.md5((t+link).encode()).hexdigest()[:12],
-                            f"PH 新品 {t}", link, tags=["discover", "producthunt"]))
+                            f"PH 新品 {t}", link, tags=["discover", "producthunt"], desc=d))
     except ET.ParseError:
         pass
     return out[:20]
@@ -184,8 +198,9 @@ def fetch_reddit(subs):
             for l in entry.findall(A + "link"):
                 link = l.get("href", "")
             if not t: continue
+            d = entry.findtext(A + "content") or entry.findtext("description") or ""
             out.append(item("reddit", hashlib.md5((t + link).encode()).hexdigest()[:12],
-                            f"r/{sub}热帖 {t[:100]}", link, tags=["discover", "reddit", sub]))
+                            f"r/{sub}热帖 {t[:100]}", link, tags=["discover", "reddit", sub], desc=d))
         time.sleep(0.5)
     return out
 
@@ -206,7 +221,8 @@ def fetch_rss(urls):
                 for l in entry.findall(A + "link"):
                     link = l.get("href", "")
             if not t: continue
-            out.append(item("rss", hashlib.md5((t+link).encode()).hexdigest()[:12], f"{t}", link, tags=["discover", "rss"]))
+            d = entry.findtext("description") or entry.findtext(A + "content") or ""
+            out.append(item("rss", hashlib.md5((t+link).encode()).hexdigest()[:12], f"{t}", link, tags=["discover", "rss"], desc=d))
     return out
 
 # ---------------- 状态与主流程 ----------------

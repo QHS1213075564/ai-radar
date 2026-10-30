@@ -3,7 +3,7 @@
 import json
 import os
 import sys
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 import requests
 
@@ -12,13 +12,18 @@ sys.path.insert(0, ROOT)
 from push import push  # noqa: E402
 
 DAILY_PROMPT = """你是 AI 行业分析师，为关注【图片/视频生成、开源生态】的用户写每日情报。
-输入是 JSON 条目列表。输出 Markdown 日报，结构：
+输入是 JSON 条目列表（desc 字段是原文简介，可用于判断条目是干什么的）。输出 Markdown 日报，结构：
 1. 【变革分析】挑 1-2 件真正改变格局的事，各写 3-4 句：它改变了谁的生存方式/让什么变便宜/让什么变过时。没有值得写的就写"今日无格局级事件"。
-2. 【新品新工具】过去一天第一次出现的产品/模型/工具，每条一行：名称+一句话它能干什么+链接。
-3. 【模型更新】开源/闭源分列，每条一行+链接。
-4. 【变现信号】谁开始收费、付费榜动向、创作者激励。
-5. 【一句话速览】其余条目每条一句+链接。
-要求：忠实于输入，不编造；某板块无内容写"今日无"；总长 600 字内；标题行用日期。"""
+2. 【MiniMax H3 动态】MiniMax 视频模型家族（H3 及其变体如 Fast H3/Pike H3 等）的任何新模型、新版本、社区实测反馈都单独列这里——当前开源视频最强，用户重点盯。无动态写"今日无"。
+3. 【新品新工具】过去一天第一次出现的产品/模型/工具，每条一行：名称+一句话它能干什么（根据 desc 判断用途/画风/基于什么模型）+链接。
+4. 【模型更新】开源/闭源分列，每条一行+一句话用途+链接。
+5. 【变现信号】谁开始收费、付费榜动向、创作者激励。
+6. 【一句话速览】其余条目每条一句+链接。
+要求：忠实于输入，不编造；某板块无内容写"今日无"；总长 700 字内；标题行用日期。"""
+
+NSFW_PROMPT = """输入是 Civitai/HF 的 NSFW 新条目（desc 是作者简介）。每条写一行：
+名称 + 一句话说明它是干什么的（LoRA/Checkpoint/风格？基于什么底模？画风/用途给谁用？）+ 链接。
+desc 为空就根据名称推断并标注"(推断)"。忠实输入，不编造，总长 300 字内。"""
 
 # NSFW 条目不进 LLM（国产 API 网关有审核，喂进去会被拒/吞），由代码直接拼接原文
 NSFW_SOURCES = {"civitai"}
@@ -67,7 +72,8 @@ def call_gemini(prompt: str, items: list) -> str:
 def fallback(items: list) -> str:
     lines = []
     for i in items[:40]:
-        lines.append(f"- {i['title']}  \n  {i['url']}")
+        d = f"  \n  {i['desc']}" if i.get("desc") else ""
+        lines.append(f"- {i['title']}{d}  \n  {i['url']}")
     return "\n".join(lines) if lines else "（本轮无新条目）"
 
 def main():
@@ -85,9 +91,13 @@ def main():
     else:
         text = "（今日非 NSFW 区无新增）" if nsfw_items else fallback(items)
     if nsfw_items:
-        sec = ["", "【NSFW 专区】"] + [f"- {i['title']}  \n  {i['url']}" for i in nsfw_items[:15]]
-        text += "\n" + "\n".join(sec)
-    title = f"AI雷达 {'日报' if mode=='daily' else '快报'} {datetime.now(timezone.utc).strftime('%m-%d')}"
+        # NSFW 专区也过 LLM 写简介（OpenRouter 透传无审核）；被吞则降级原文拼接
+        sec_text = call_openai_compat(NSFW_PROMPT, nsfw_items) if mode == "daily" else ""
+        lines = sec_text if sec_text else "\n".join(f"- {i['title']}  \n  {i['url']}" for i in nsfw_items[:15])
+        text += "\n【NSFW 专区】\n" + lines
+    # 标题日期用北京时间（UTC+8）
+    bj = datetime.now(timezone.utc) + timedelta(hours=8)
+    title = f"AI雷达 {'日报' if mode=='daily' else '快报'} {bj.strftime('%m-%d')}"
     push(title, text)
 
 if __name__ == "__main__":
