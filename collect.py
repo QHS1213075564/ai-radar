@@ -16,6 +16,7 @@ import requests
 import yaml
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
+STATE_DIR = os.environ.get("RADAR_STATE_DIR") or os.path.join(ROOT, "state")  # 本地演练可用独立目录
 UA = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0 Safari/537.36"}
 GITHUB_TOKEN = os.environ.get("GITHUB_TOKEN")  # Actions 内置，提升速率限制
 
@@ -240,13 +241,13 @@ def fetch_rss(urls):
 # ---------------- 状态与主流程 ----------------
 
 def load_state():
-    p = os.path.join(ROOT, "state", "seen.json")
+    p = os.path.join(STATE_DIR, "seen.json")
     if os.path.exists(p):
         with open(p, encoding="utf8") as f: return json.load(f)
     return {"seen": {}, "changelog_hashes": {}, "last_daily": None}
 
 def save_state(state):
-    p = os.path.join(ROOT, "state", "seen.json")
+    p = os.path.join(STATE_DIR, "seen.json")
     os.makedirs(os.path.dirname(p), exist_ok=True)
     with open(p, "w", encoding="utf8") as f: json.dump(state, f, ensure_ascii=False)
 
@@ -302,8 +303,8 @@ def main():
         new = ch_new
         state["changelog_hashes"] = ch_keep
 
-    os.makedirs(os.path.join(ROOT, "state"), exist_ok=True)
-    with open(os.path.join(ROOT, "state", f"new_{args.mode}.json"), "w", encoding="utf8") as f:
+    os.makedirs(STATE_DIR, exist_ok=True)
+    with open(os.path.join(STATE_DIR, f"new_{args.mode}.json"), "w", encoding="utf8") as f:
         json.dump(new, f, ensure_ascii=False, indent=1)
     print(f"[collect:{args.mode}] {len(new)} new items")
     save_state(state)
