@@ -140,13 +140,22 @@ def fetch_changelogs(entries):
 
 # ---------------- discover 采集器 ----------------
 
-def fetch_github_trending():
-    r = get("https://github.com/trending?since=daily", headers={**UA, "Accept": "text/html"})
+def fetch_github_trending(since="daily"):
+    r = get(f"https://github.com/trending?since={since}", headers={**UA, "Accept": "text/html"})
     if r is None: return []
     out = []
-    for m in re.finditer(r'href="/([A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+)" data-view-component', r.text):
-        out.append(item("gh_trending", m.group(1), f"GitHub Trending {m.group(1)}",
-                        f"https://github.com/{m.group(1)}", tags=["discover", "github"]))
+    src = "gh_trending" if since == "daily" else "gh_trending_week"
+    # 每个仓库一张 <article> 卡片，里面有描述 <p>，一并采下来喂 LLM
+    for m in re.finditer(r'<article[^>]*>(?:(?!</article>).)*?</article>', r.text, re.S):
+        card = m.group(0)
+        nm = re.search(r'href="/([A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+)" data-view-component', card)
+        if not nm:
+            continue
+        dp = re.search(r'<p[^>]*>(.*?)</p>', card, re.S)
+        desc = clean_desc(dp.group(1)) if dp else ""
+        out.append(item(src, nm.group(1), f"GitHub Trending({since}) {nm.group(1)}",
+                        f"https://github.com/{nm.group(1)}", tags=["discover", "github", f"trending-{since}"],
+                        desc=desc))
     return out[:25]
 
 def fetch_hf_papers():
@@ -276,6 +285,7 @@ def main():
         items += fetch_civitai(m["civitai"])
         items += fetch_changelogs(m["changelogs"])
         items += fetch_github_trending()
+        items += fetch_github_trending("weekly")
         items += fetch_hf_papers()
         items += fetch_producthunt()
         items += fetch_hackernews(d["hackernews"])
