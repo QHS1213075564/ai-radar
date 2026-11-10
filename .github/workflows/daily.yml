@@ -15,7 +15,7 @@ jobs:
         run: python collect.py --mode daily
         env: {GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"}
       - name: summarize+push
-        run: python summarize.py daily
+        run: python summarize.py daily --push
         env:
           GEMINI_API_KEY: "${{ secrets.GEMINI_API_KEY }}"
           LLM_API_KEY: "${{ secrets.LLM_API_KEY }}"
